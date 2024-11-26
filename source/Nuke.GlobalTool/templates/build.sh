@@ -11,6 +11,7 @@ SCRIPT_DIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 
 BUILD_PROJECT_FILE="$SCRIPT_DIR/_BUILD_DIRECTORY_/_BUILD_PROJECT_NAME_.csproj"
 TEMP_DIRECTORY="$SCRIPT_DIR/_ROOT_DIRECTORY_/.nuke/temp"
+NUKE_PARAMETERS_JSON="$SCRIPT_DIR/_ROOT_DIRECTORY_/.nuke/parameters.json"
 
 DOTNET_GLOBAL_FILE="$SCRIPT_DIR/_ROOT_DIRECTORY_/global.json"
 DOTNET_INSTALL_URL="https://dot.net/v1/dotnet-install.sh"
@@ -30,6 +31,9 @@ function FirstJsonValue {
 # If dotnet CLI is installed globally and it matches requested version, use for execution
 if [ -x "$(command -v dotnet)" ] && dotnet --version &>/dev/null; then
     export DOTNET_EXE="$(command -v dotnet)"
+elif $(grep -Pq "DisableDotNetInstall.*?true" $NUKE_PARAMETERS_JSON); then
+    echo "Requested .NET SDK version was not found and dotnet-install is disabled in parameters.json."
+    exit 1
 else
     # Download install script
     DOTNET_INSTALL_FILE="$TEMP_DIRECTORY/dotnet-install.sh"

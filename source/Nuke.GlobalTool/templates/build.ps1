@@ -15,6 +15,7 @@ $PSScriptRoot = Split-Path $MyInvocation.MyCommand.Path -Parent
 
 $BuildProjectFile = "$PSScriptRoot\_BUILD_DIRECTORY_\_BUILD_PROJECT_NAME_.csproj"
 $TempDirectory = "$PSScriptRoot\_ROOT_DIRECTORY_\.nuke\temp"
+$NukeParametersJson = "$PSScriptRoot\_ROOT_DIRECTORY_\.nuke\parameters.json"
 
 $DotNetGlobalFile = "$PSScriptRoot\_ROOT_DIRECTORY_\global.json"
 $DotNetInstallUrl = "https://dot.net/v1/dotnet-install.ps1"
@@ -32,10 +33,30 @@ function ExecSafe([scriptblock] $cmd) {
     if ($LASTEXITCODE) { exit $LASTEXITCODE }
 }
 
+function IsDotNetInstallDisabled() {
+    if (!(Test-Path $NukeParametersJson)) {
+        return $false;
+    }
+
+    try {
+        $NukeParameters = $(Get-Content $NukeParametersJson | Out-String | ConvertFrom-Json)
+    }
+    catch {
+        Write-Warning "Malformatted JSON found in parameters.json"
+        return $false
+    }
+
+    return $null -ne $NukeParameters -and $NukeParameters.PSObject.Properties.Item("DisableDotNetInstall")
+}
+
 # If dotnet CLI is installed globally and it matches requested version, use for execution
 if ($null -ne (Get-Command "dotnet" -ErrorAction SilentlyContinue) -and `
-     $(dotnet --version) -and $LASTEXITCODE -eq 0) {
+    $(dotnet --version) -and $LASTEXITCODE -eq 0) {
     $env:DOTNET_EXE = (Get-Command "dotnet").Path
+}
+elseif (IsDotNetInstallDisabled) {
+    Write-Output "Requested .NET SDK version was not found and dotnet-install is disabled in parameters.json."
+    exit 1
 }
 else {
     # Download install script
